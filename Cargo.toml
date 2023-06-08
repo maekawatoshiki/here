@@ -1,6 +1,5 @@
 [workspace]
 members = [
-  "here-cli",
   "here-server",
 ]
 resolver = "2"
