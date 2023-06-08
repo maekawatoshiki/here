@@ -1,4 +1,4 @@
-use std::cell::RefCell;
+use std::{cell::RefCell, sync::Mutex};
 
 use axum::{
     http::StatusCode,
@@ -24,39 +24,43 @@ struct PutFile {
 
 #[derive(Serialize, Clone)]
 struct File {
+    uuid: String,
     data: String,
     name: String,
 }
 
-thread_local! {
-    static CURRENT_FILE: RefCell<Option<File>> = RefCell::new(None);
-}
+static CURRENT_FILE: Mutex<RefCell<Option<File>>> = Mutex::new(RefCell::new(None));
 
 async fn get_file(Json(payload): Json<GetFile>) -> (StatusCode, Json<File>) {
     let GetFile { uuid } = payload;
     log::info!("uuid: {}", uuid);
-    CURRENT_FILE.with(|f| {
-        if let Some(file) = &*f.borrow() {
-            if file.name == uuid {
-                return (StatusCode::OK, Json(file.clone()));
-            }
-        }
-        (
-            StatusCode::NOT_FOUND,
-            Json(File {
-                data: "".to_string(),
-                name: "".to_string(),
-            }),
-        )
-    })
+    CURRENT_FILE.lock().unwrap().borrow().as_ref().map_or_else(
+        || {
+            (
+                StatusCode::NOT_FOUND,
+                Json(File {
+                    uuid: "".to_string(),
+                    data: "".to_string(),
+                    name: "".to_string(),
+                }),
+            )
+        },
+        |file| {
+            return (StatusCode::OK, Json(file.clone()));
+        },
+    )
 }
 
 async fn put_file(Json(payload): Json<PutFile>) -> StatusCode {
     let PutFile { uuid, name, data } = payload;
     log::info!("uuid: {uuid}");
     log::info!("name: {name}");
-    log::info!("data: {data}");
-    CURRENT_FILE.with(|f| *f.borrow_mut() = Some(File { data, name }));
+    log::info!("data: ... (omit)");
+    CURRENT_FILE
+        .lock()
+        .unwrap()
+        .borrow_mut()
+        .replace(File { uuid, data, name });
     StatusCode::OK
 }
 
@@ -67,8 +71,8 @@ async fn main() {
     let endpoint = std::env::var("HERE_ENDPOINT").unwrap_or("0.0.0.0:3000".into());
 
     let app = Router::new()
-        .route("/", get(get_file))
-        .route("/", post(put_file));
+        .route("/file", get(get_file))
+        .route("/file", post(put_file));
 
     axum::Server::bind(&endpoint.parse().unwrap())
         .serve(app.into_make_service())
