@@ -5,52 +5,55 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+// curl -X POST -H "Content-Type: application/json" -d '{"uuid":"xxxx", "data":"12312"}' 0.0.0.0:3000
+// curl -X GET -H "Content-Type: application/json" -d '{"uuid":"xxxx", "data":"12312"}' 0.0.0.0:3000
+
+#[derive(Deserialize)]
+struct GetFile {
+    uuid: String,
+}
+
+#[derive(Deserialize)]
+struct PutFile {
+    uuid: String,
+    data: String,
+}
+
+#[derive(Serialize)]
+struct File {
+    data: String,
+    name: String,
+}
+
+async fn get_file(Json(payload): Json<GetFile>) -> (StatusCode, Json<File>) {
+    let GetFile { uuid } = payload;
+    log::info!("uuid: {}", uuid);
+    (
+        StatusCode::OK,
+        Json(File {
+            data: "123".to_string(),
+            name: "123".to_string(),
+        }),
+    )
+}
+
+async fn put_file(Json(payload): Json<PutFile>) -> StatusCode {
+    let PutFile { uuid, data } = payload;
+    log::info!("uuid: {}", uuid);
+    log::info!("data: {}", data);
+    StatusCode::OK
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
 
     let app = Router::new()
-        // `GET /` goes to `root`
-        .route("/", get(root))
-        // `POST /users` goes to `create_user`
-        .route("/users", post(create_user));
+        .route("/", get(get_file))
+        .route("/", post(put_file));
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
-}
-
-// basic handler that responds with a static string
-async fn root() -> &'static str {
-    "Hello, World!"
-}
-
-async fn create_user(
-    // this argument tells axum to parse the request body
-    // as JSON into a `CreateUser` type
-    Json(payload): Json<CreateUser>,
-) -> (StatusCode, Json<User>) {
-    // insert your application logic here
-    let user = User {
-        id: 1337,
-        username: payload.username,
-    };
-
-    // this will be converted into a JSON response
-    // with a status code of `201 Created`
-    (StatusCode::CREATED, Json(user))
-}
-
-// the input to our `create_user` handler
-#[derive(Deserialize)]
-struct CreateUser {
-    username: String,
-}
-
-// the output to our `create_user` handler
-#[derive(Serialize)]
-struct User {
-    id: u64,
-    username: String,
 }
