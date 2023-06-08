@@ -1,0 +1,11 @@
+#!/bin/bash -eu
+
+GETPUT=${1:?Error: no get/put given}
+FILE=${2:?Error: no file given}
+
+if [ "$GETPUT" == "get" ]; then
+  curl -X GET -H "Content-Type: application/json" -d "{\"uuid\":\"x\"}" 0.0.0.0:3000/file \
+    | jq -r '.data' | base64 -d > $FILE
+else
+  curl -X POST -H "Content-Type: application/json" -d "{\"uuid\":\"x\",\"name\":\"$FILE\",\"data\":\"$(cat $FILE | base64 -w 0)\"}" 0.0.0.0:3000/file
+fi
