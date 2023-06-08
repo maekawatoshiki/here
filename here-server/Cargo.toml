@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = "0.6.18"
+serde = { version = "1.0.164", features = ["derive"] }
+tokio = { version = "1.28.2", features = ["full"] }
+tracing-subscriber = "0.3.17"
