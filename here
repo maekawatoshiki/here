@@ -4,8 +4,12 @@ GETPUT=${1:?Error: no get/put given}
 FILE=${2:?Error: no file given}
 
 if [ "$GETPUT" == "get" ]; then
-  curl -X GET -H "Content-Type: application/json" -d "{\"uuid\":\"x\"}" 0.0.0.0:3000/file \
-    | jq -r '.data' | base64 -d > $FILE
+  printf "\033[1;37mReceiving file...\033[0m\n"
+  curl -X GET -H "Content-Type: application/json" -d "{\"uuid\":\"x\"}" $ENDPOINT/file \
+    | jq -r '.data' | base64 -d | gzip -d > $FILE
 else
-  curl -X POST -H "Content-Type: application/json" -d "{\"uuid\":\"x\",\"name\":\"$FILE\",\"data\":\"$(cat $FILE | base64 -w 0)\"}" 0.0.0.0:3000/file
+  printf "\033[1;37mPreprocessing file...\033[0m\n"
+  echo "{\"uuid\":\"x\",\"name\":\"$FILE\",\"data\":\"$(cat $FILE | gzip -c | base64 -w 0)\"}" > /tmp/req.json
+  printf "\033[1;37mSending file...\033[0m\n"
+  curl -# -X POST $ENDPOINT/file -H "Content-Type: application/json" -d "@/tmp/req.json"
 fi
