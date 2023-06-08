@@ -48,11 +48,13 @@ async fn put_file(Json(payload): Json<PutFile>) -> StatusCode {
 async fn main() {
     tracing_subscriber::fmt::init();
 
+    let endpoint = std::env::var("HERE_ENDPOINT").unwrap_or("0.0.0.0:3000".into());
+
     let app = Router::new()
         .route("/", get(get_file))
         .route("/", post(put_file));
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
+    axum::Server::bind(&endpoint.parse().unwrap())
         .serve(app.into_make_service())
         .await
         .unwrap();
